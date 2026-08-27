@@ -3,7 +3,7 @@ import { LIBRARIES } from "../../server/libraries.js";
 export function onRequestGet(context) {
   return Response.json(
     {
-      libraries: LIBRARIES.map(({ id, name }) => ({ id, name })),
+      libraries: LIBRARIES.map(({ id, name, openDataName }) => ({ id, name, openDataName: openDataName || null })),
       maxQueries: 200,
       batchSize: 20,
       turnstileSiteKey: context.env.TURNSTILE_SITE_KEY || null,

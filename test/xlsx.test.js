@@ -10,4 +10,5 @@ test("검색 결과를 Excel XLSX 파일로 만든다", async () => {
   const content = new TextDecoder().decode(bytes);
   assert.ok(content.includes("xl/worksheets/sheet1.xml"));
   assert.ok(content.includes("모순 &amp; 사랑"));
+  assert.ok(content.includes("</fills><borders"), "스타일 XML의 fills 요소가 올바르게 닫혀야 한다");
 });

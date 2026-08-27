@@ -6,6 +6,7 @@
   "scripts": {
     "check:api": "node scripts/check-api-key.js",
     "check:config": "node scripts/check-local-config.js",
+    "measure:data4library": "node scripts/measure-data4library.js",
     "dev": "wrangler pages dev public",
     "deploy": "wrangler pages deploy public",
     "test": "node --test"

@@ -3,92 +3,137 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ISBN 또는 책 제목으로 화성시 도서관 소장 여부와 사서제한 추정 도서를 검색합니다.">
-    <title>화성시 도서관 책 찾기</title>
+    <meta name="description" content="도서 구매 전 ISBN으로 화성시 도서관의 기존 소장 여부를 한 번에 확인합니다.">
+    <title>화성시 도서관 소장 확인</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="/" aria-label="처음으로">
         <span class="brand-mark" aria-hidden="true">책</span>
-        <span><strong>화성시 도서관</strong><small>책 찾기</small></span>
+        <span><strong>화성시 도서관</strong><small>구매 전 소장 확인</small></span>
       </a>
       <a class="official-link" href="https://www.hscitylib.or.kr" target="_blank" rel="noopener noreferrer">도서관 홈페이지 <span aria-hidden="true">↗</span></a>
     </header>
 
     <main>
-      <section class="hero" aria-labelledby="page-title">
-        <div class="eyebrow">HWASEONG LIBRARY FINDER</div>
-        <h1 id="page-title">찾고 싶은 책,<br><em>어느 도서관에 있을까요?</em></h1>
-        <p>ISBN이나 책 제목을 여러 줄로 입력하면 화성시 도서관 소장 여부를 한 번에 확인합니다.</p>
-      </section>
-
       <section class="search-panel" aria-labelledby="search-title">
-        <div class="panel-heading">
+        <div class="purpose-heading">
           <div>
-            <span class="step">01</span>
-            <h2 id="search-title">검색할 책을 입력하세요</h2>
+            <div class="eyebrow">도서 구입 전 중복 소장 확인</div>
+            <h1 id="search-title">구입하려는 책, <em>이미 도서관에 있나요?</em></h1>
+            <p>ISBN 목록을 넣고 도서관을 선택하세요. 소장 도서는 구매 대상에서 제외할 수 있도록 한 번에 확인합니다.</p>
           </div>
-          <span id="query-count" class="query-count">0 / 200</span>
+          <div class="purpose-badge"><strong>최대 200권</strong><span>한 번에 확인</span></div>
         </div>
 
         <form id="search-form">
-          <label class="field-label" for="queries">ISBN 또는 책 제목</label>
-          <textarea id="queries" name="queries" rows="7" maxlength="40200" placeholder="한 줄에 한 권씩 입력해 주세요.&#10;&#10;예)&#10;9791160079104&#10;모순"></textarea>
-          <div class="field-help"><span>ISBN의 하이픈은 있어도 괜찮습니다.</span><button type="button" id="example-button" class="text-button">예시 입력</button></div>
-          <div id="limit-warning" class="notice warning limit-warning" role="status" aria-live="polite" hidden></div>
+          <div class="search-layout">
+            <div class="query-column">
+              <div class="field-heading">
+                <label class="field-label" for="queries">확인할 ISBN</label>
+                <span id="query-count" class="query-count">0 / 200</span>
+              </div>
+              <textarea id="queries" name="queries" rows="10" maxlength="40200" placeholder="한 줄에 한 권씩 ISBN을 붙여 넣으세요.&#10;&#10;9788943314477&#10;9791160079104"></textarea>
+              <div class="field-help"><span>하이픈이 포함되어도 괜찮습니다. 책 제목 검색도 지원합니다.</span></div>
+              <div id="limit-warning" class="notice warning limit-warning" role="status" aria-live="polite" hidden></div>
+              <div class="result-guide" aria-label="검색 결과 안내">
+                <strong>검색 결과는 이렇게 표시됩니다</strong>
+                <span><i class="dot found"></i><b>소장</b> 선택한 도서관에 있는 책</span>
+                <span><i class="dot recent"></i><b>최근 구매</b> 등록한 구매 목록에 있는 책</span>
+                <span><i class="dot estimated"></i><b>사서제한 추정</b> 공개 검색에는 없지만 장서 데이터에 있는 책</span>
+                <span><i class="dot absent"></i><b>미소장</b> 선택한 검색 범위에서 확인되지 않은 책</span>
+              </div>
+            </div>
 
-          <div class="form-grid">
-            <div>
+            <div class="action-column">
+              <div class="library-field">
               <label class="field-label" for="library">도서관 선택</label>
               <select id="library" name="library" disabled><option>도서관 목록을 불러오는 중...</option></select>
-            </div>
-            <div id="turnstile-area" class="turnstile-area" hidden>
-              <span class="field-label">자동 검색 방지</span>
-              <div id="turnstile-widget"></div>
+              </div>
+
+              <section id="data-tools" class="data-tools">
+                <label class="restricted-toggle" for="restricted-search-toggle">
+                  <span class="restricted-toggle-copy"><strong>사서제한 도서까지 함께 검색</strong><small id="restricted-toggle-state">현재: 화성시 도서관 홈페이지에서만 검색 중</small></span>
+                  <input id="restricted-search-toggle" type="checkbox" role="switch" aria-controls="restricted-settings" aria-expanded="false">
+                  <span class="toggle-track" aria-hidden="true"><span></span></span>
+                </label>
+                <div id="restricted-settings" class="data-tools-body" hidden>
+                  <div class="data-tools-heading"><strong>확인 방식 선택</strong><small id="data-summary">등록 없음</small></div>
+                  <fieldset class="fallback-mode">
+                    <legend class="visually-hidden">공개 검색에 없을 때 확인 방법</legend>
+                    <label><input type="radio" name="fallback-mode" value="file" checked><span><strong>월간 장서 파일로 확인 <em class="recommended-badge"><i aria-hidden="true">★</i> 강력 추천</em></strong><small>빠르고 안정적이며 API를 호출하지 않습니다. 정보나루에서 최신 파일을 받아 등록합니다.</small></span></label>
+                    <label><input type="radio" name="fallback-mode" value="api"><span><strong>정보나루 API로 확인</strong><small>파일 없이 조회하지만 느리거나 실패할 수 있고, 자료 반영에도 최대 약 한 달 시차가 있을 수 있습니다.</small></span></label>
+                  </fieldset>
+                  <div id="monthly-file-panel" class="monthly-file-panel" hidden>
+                    <strong class="monthly-file-title">월간 파일 설정</strong>
+                    <a id="open-data-link" class="data-download-link" href="https://www.data4library.kr/openDataL?srchText=%ED%99%94%EC%84%B1%EC%8B%9C%EB%A6%BD" target="_blank" rel="noopener noreferrer">정보나루에서 월간 장서 CSV 받기 <span aria-hidden="true">↗</span></a>
+                    <p class="data-instruction">정보나루에서 가장 최신 장서 CSV를 내려받아 등록하세요. 파일의 최신 등록일을 기준일로 표시합니다.</p>
+
+                    <div class="data-slot">
+                      <div><strong>월간 장서</strong><span>정보나루 CSV/XLSX</span></div>
+                      <label class="file-button" for="catalog-file">파일 등록</label>
+                      <input id="catalog-file" class="visually-hidden" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                      <p id="catalog-status" class="data-status">등록된 파일 없음</p>
+                      <button id="catalog-remove" class="data-remove" type="button" hidden>삭제</button>
+                    </div>
+                    <p id="catalog-guidance" class="catalog-guidance" hidden></p>
+
+                  </div>
+
+                  <div class="recent-purchase-panel">
+                    <strong class="recent-purchase-title">최근 구매 목록 · 두 방식 공통</strong>
+                    <p class="data-instruction">정보나루 API와 월간 파일 모두 자료 반영에 시차가 있습니다. 최근 한 달 안에 구매했지만 아직 배가되지 않은 도서를 CSV/XLSX로 등록하면 API 호출 전에 먼저 확인합니다.</p>
+                    <div class="data-slot">
+                      <div><strong>최근 구매</strong><span>여러 파일을 계속 추가할 수 있습니다</span></div>
+                      <label class="file-button" for="recent-file">파일 추가</label>
+                      <input id="recent-file" class="visually-hidden" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                      <p id="recent-status" class="data-status">등록된 파일 없음</p>
+                      <button id="recent-remove" class="data-remove" type="button" hidden>전체 삭제</button>
+                    </div>
+                    <div id="recent-files" class="recent-files"></div>
+                    <p class="data-rule">모든 최근 구매 파일의 첫 행에는 <strong>ISBN</strong> 헤더가 반드시 있어야 합니다. 같은 이름의 파일을 다시 등록하면 새 내용으로 교체됩니다.</p>
+                  </div>
+                  <div id="data-error" class="notice error" role="alert" hidden></div>
+                </div>
+              </section>
+
+              <div id="setup-warning" class="notice warning" hidden></div>
+              <div id="form-error" class="notice error" role="alert" hidden></div>
+
+              <button id="search-button" class="primary-button" type="submit" disabled>
+                <span class="button-label">소장 여부 확인하기</span>
+                <span class="button-progress" aria-hidden="true"></span>
+              </button>
             </div>
           </div>
 
-          <div id="setup-warning" class="notice warning" hidden></div>
-          <div id="form-error" class="notice error" role="alert" hidden></div>
-
-          <button id="search-button" class="primary-button" type="submit" disabled>
-            <span class="button-label">도서 검색하기</span>
-            <span class="button-progress" aria-hidden="true"></span>
-          </button>
+          <div id="turnstile-area" class="turnstile-area" hidden aria-label="자동 검색 방지 확인">
+            <div id="turnstile-widget"></div>
+          </div>
         </form>
       </section>
 
       <section id="results-section" class="results-section" aria-labelledby="results-title" hidden>
         <div class="results-heading">
           <div>
-            <span class="step">02</span>
             <h2 id="results-title">검색 결과</h2>
             <p id="result-summary" aria-live="polite"></p>
           </div>
           <button id="excel-button" class="secondary-button" type="button" disabled>Excel 다운로드</button>
         </div>
-        <div class="legend" aria-label="결과 상태 설명">
-          <span><i class="dot found"></i>소장</span>
-          <span><i class="dot estimated"></i>사서제한 추정</span>
-          <span><i class="dot absent"></i>미소장</span>
-        </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>상태</th><th>ISBN / 검색어</th><th>서명</th><th>저작자</th><th>발행자</th><th>발행년</th><th>자료실</th><th>청구기호</th><th>권수</th></tr></thead>
+            <thead><tr><th>상태</th><th>ISBN / 검색어</th><th>서명</th><th>저작자</th><th>발행자</th><th>발행년</th><th>자료실</th><th>등록번호</th><th>청구기호</th><th>권수</th></tr></thead>
             <tbody id="result-body"></tbody>
           </table>
         </div>
         <div id="mobile-results" class="mobile-results"></div>
       </section>
 
-      <aside class="explanation">
-        <span class="info-mark" aria-hidden="true">i</span>
-        <div><strong>‘사서제한 추정’은 무엇인가요?</strong><p>화성시 도서관 공개 검색에는 보이지 않지만 도서관정보나루 장서 데이터에는 있는 도서입니다. 데이터 갱신 시점 차이 등으로 실제 상태와 다를 수 있습니다.</p></div>
-      </aside>
+      <aside class="explanation"><strong>참고</strong><p>‘사서제한 추정’은 화성시 공개 검색에는 보이지 않지만 도서관정보나루 장서 데이터에는 있는 도서입니다. 실제 소장 상태와 다를 수 있습니다.</p></aside>
     </main>
 
-    <footer><span>비공식 검색 도구</span><p>정확한 소장·대출 상태는 화성시 도서관 홈페이지에서 다시 확인해 주세요.</p></footer>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

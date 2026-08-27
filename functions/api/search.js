@@ -6,7 +6,41 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 30;
 const SESSION_COOKIE = "bookfind_turnstile_session";
 const SESSION_TTL_SECONDS = 15 * 60;
+const DATA4LIBRARY_CACHE_TTL_SECONDS = 24 * 60 * 60;
 const requestLog = new Map();
+
+function createData4LibraryCache(request) {
+  const cache = globalThis.caches?.default;
+  if (!cache) return null;
+  const origin = new URL(request.url).origin;
+  const keyFor = (libraryId, isbn) => new Request(
+    `${origin}/__bookfind-cache/data4library/v1/${encodeURIComponent(libraryId)}/${encodeURIComponent(isbn)}`,
+    { method: "GET" }
+  );
+
+  return {
+    async get(libraryId, isbn) {
+      try {
+        const response = await cache.match(keyFor(libraryId, isbn));
+        return response ? await response.json() : null;
+      } catch {
+        return null;
+      }
+    },
+    async set(libraryId, isbn, result) {
+      try {
+        await cache.put(
+          keyFor(libraryId, isbn),
+          Response.json(result, {
+            headers: { "Cache-Control": `public, max-age=${DATA4LIBRARY_CACHE_TTL_SECONDS}` }
+          })
+        );
+      } catch {
+        // 캐시 장애가 실제 검색 결과를 오류로 바꾸지 않도록 무시합니다.
+      }
+    }
+  };
+}
 
 function jsonError(message, status, details) {
   return Response.json(
@@ -127,12 +161,16 @@ async function handlePost(context) {
   const queries = Array.isArray(body.queries)
     ? body.queries.map((value) => String(value).trim()).filter(Boolean)
     : [];
+  const localFallback = Array.isArray(body.localFallback)
+    ? body.localFallback.slice(0, MAX_QUERIES).map((value) => value === true)
+    : [];
+  const fallbackMode = ["none", "file"].includes(body.fallbackMode) ? body.fallbackMode : "api";
   const library = findLibrary(String(body.libraryId || ""));
   if (!queries.length) return jsonError("ISBN 또는 책 제목을 한 개 이상 입력해 주세요.", 400);
   if (queries.length > MAX_QUERIES) return jsonError(`한 번에 최대 ${MAX_QUERIES}개까지 검색할 수 있습니다.`, 400);
   if (queries.some((query) => query.length > 200)) return jsonError("검색어는 200자 이내로 입력해 주세요.", 400);
   if (!library) return jsonError("선택한 도서관을 찾을 수 없습니다.", 400);
-  if (!env.DATA4LIBRARY_API_KEY) return jsonError("서버에 도서관정보나루 API 키가 설정되지 않았습니다.", 503);
+  if (fallbackMode === "api" && !env.DATA4LIBRARY_API_KEY) return jsonError("서버에 도서관정보나루 API 키가 설정되지 않았습니다.", 503);
 
   let sessionCookie = null;
   if (!(await hasValidSession(request, env.TURNSTILE_SECRET_KEY))) {
@@ -142,13 +180,23 @@ async function handlePost(context) {
   }
 
   const encoder = new TextEncoder();
+  const batchDiagnosticId = crypto.randomUUID().slice(0, 8);
+  const data4LibraryCache = createData4LibraryCache(request);
   const stream = new ReadableStream({
     async start(controller) {
       const send = (value) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`));
       send({ type: "start", total: queries.length });
       for (let index = 0; index < queries.length; index += 1) {
         if (request.signal.aborted) break;
-        const result = await searchOne(queries[index], library, env.DATA4LIBRARY_API_KEY);
+        const diagnosticId = `${batchDiagnosticId}-${String(index + 1).padStart(2, "0")}`;
+        const result = await searchOne(queries[index], library, env.DATA4LIBRARY_API_KEY, {
+          id: diagnosticId,
+          log: env.DIAGNOSTIC_LOGGING !== "false"
+        }, data4LibraryCache, {
+          skipData4Library: localFallback[index] === true,
+          disableData4Library: fallbackMode === "file",
+          homepageOnly: fallbackMode === "none"
+        });
         send({ type: "result", index, result });
       }
       send({ type: "complete" });

@@ -4,7 +4,7 @@ export function onRequestGet() {
   return Response.json(
     {
       libraries: LIBRARIES.map(({ id, name, openDataName }) => ({ id, name, openDataName: openDataName || null })),
-      maxQueries: 200,
+      maxQueries: 500,
       batchSize: 20
     },
     {

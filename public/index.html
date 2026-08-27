@@ -44,6 +44,7 @@
                 <span><i class="dot estimated"></i><b>사서제한 추정</b> 공개 검색에는 없지만 장서 데이터에 있는 책</span>
                 <span><i class="dot absent"></i><b>미소장</b> 선택한 검색 범위에서 확인되지 않은 책</span>
               </div>
+              <div id="left-search-button-slot" class="search-button-slot left-search-button-slot"></div>
             </div>
 
             <div class="action-column">
@@ -97,10 +98,12 @@
 
               <div id="form-error" class="notice error" role="alert" hidden></div>
 
-              <button id="search-button" class="primary-button" type="submit" disabled>
-                <span class="button-label">소장 여부 확인하기</span>
-                <span class="button-progress" aria-hidden="true"></span>
-              </button>
+              <div id="right-search-button-slot" class="search-button-slot right-search-button-slot">
+                <button id="search-button" class="primary-button" type="submit" disabled>
+                  <span class="button-label">소장 여부 확인하기</span>
+                  <span class="button-progress" aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
           </div>
         </form>

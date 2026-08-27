@@ -180,6 +180,9 @@ textarea::placeholder { color: #98a2b3; }
   transition: transform 150ms, background 150ms, opacity 150ms;
 }
 .primary-button { position: relative; width: 100%; height: 54px; margin-top: auto; color: white; background: var(--blue); }
+.search-button-slot .primary-button { margin-top: 0; }
+.left-search-button-slot { margin-top: 4px; }
+.right-search-button-slot { margin-top: auto; }
 .primary-button:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); }
 .primary-button:disabled, .secondary-button:disabled { cursor: not-allowed; opacity: 0.48; }
 .button-progress {

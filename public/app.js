@@ -22,6 +22,8 @@ const elements = {
   recentRemove: document.querySelector("#recent-remove"),
   dataError: document.querySelector("#data-error"),
   searchButton: document.querySelector("#search-button"),
+  leftSearchButtonSlot: document.querySelector("#left-search-button-slot"),
+  rightSearchButtonSlot: document.querySelector("#right-search-button-slot"),
   buttonLabel: document.querySelector(".button-label"),
   limitWarning: document.querySelector("#limit-warning"),
   formError: document.querySelector("#form-error"),
@@ -324,6 +326,8 @@ function updateDataTools() {
     : "현재: 화성시 도서관 홈페이지에서만 검색 중";
   elements.restrictedSettings.hidden = !enabled;
   elements.restrictedToggle.setAttribute("aria-expanded", String(enabled));
+  const targetButtonSlot = enabled ? elements.leftSearchButtonSlot : elements.rightSearchButtonSlot;
+  if (elements.searchButton.parentElement !== targetButtonSlot) targetButtonSlot.append(elements.searchButton);
   const searchName = library?.openDataName || "화성시립";
   elements.openDataLink.href = `https://www.data4library.kr/openDataL?srchText=${encodeURIComponent(searchName)}`;
   elements.openDataLink.textContent = individual && library.openDataName

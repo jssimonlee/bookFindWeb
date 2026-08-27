@@ -5,6 +5,7 @@ const elements = {
   form: document.querySelector("#search-form"),
   queries: document.querySelector("#queries"),
   queryCount: document.querySelector("#query-count"),
+  maxQueryBadge: document.querySelector("#max-query-badge"),
   library: document.querySelector("#library"),
   dataSummary: document.querySelector("#data-summary"),
   restrictedToggle: document.querySelector("#restricted-search-toggle"),
@@ -472,6 +473,7 @@ async function initialize() {
     const response = await fetch("/api/config");
     if (!response.ok) throw new Error("설정을 불러올 수 없습니다.");
     state.config = await response.json();
+    elements.maxQueryBadge.textContent = `최대 ${state.config.maxQueries}권`;
     elements.library.replaceChildren(...state.config.libraries.map((library) => {
       const option = document.createElement("option"); option.value = library.id; option.textContent = library.name; return option;
     }));

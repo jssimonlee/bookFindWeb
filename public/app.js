@@ -7,11 +7,6 @@ const elements = {
   queryCount: document.querySelector("#query-count"),
   library: document.querySelector("#library"),
   dataSummary: document.querySelector("#data-summary"),
-  restrictedToggle: document.querySelector("#restricted-search-toggle"),
-  restrictedToggleState: document.querySelector("#restricted-toggle-state"),
-  restrictedSettings: document.querySelector("#restricted-settings"),
-  fallbackModes: [...document.querySelectorAll('input[name="fallback-mode"]')],
-  monthlyFilePanel: document.querySelector("#monthly-file-panel"),
   openDataLink: document.querySelector("#open-data-link"),
   catalogFile: document.querySelector("#catalog-file"),
   recentFile: document.querySelector("#recent-file"),
@@ -26,29 +21,21 @@ const elements = {
   buttonLabel: document.querySelector(".button-label"),
   limitWarning: document.querySelector("#limit-warning"),
   formError: document.querySelector("#form-error"),
-  setupWarning: document.querySelector("#setup-warning"),
   resultsSection: document.querySelector("#results-section"),
   resultSummary: document.querySelector("#result-summary"),
   resultBody: document.querySelector("#result-body"),
   mobileResults: document.querySelector("#mobile-results"),
-  excelButton: document.querySelector("#excel-button"),
-  turnstileArea: document.querySelector("#turnstile-area"),
-  turnstileWidget: document.querySelector("#turnstile-widget")
+  excelButton: document.querySelector("#excel-button")
 };
 
 const state = {
   config: null,
   results: [],
   searching: false,
-  turnstileToken: "",
-  turnstileWidgetId: null,
-  turnstileSessionReady: false,
   localData: { catalog: null, recent: null },
   activeLibraryId: "ALL"
 };
 const PREFERRED_LIBRARY_KEY = "bookfind.preferredLibraryId";
-const FALLBACK_MODE_KEY = "bookfind.fallbackModeByLibrary";
-const RESTRICTED_SEARCH_KEY = "bookfind.restrictedSearchByLibrary";
 
 function readPreferredLibrary() {
   try { return localStorage.getItem(PREFERRED_LIBRARY_KEY) || "ALL"; }
@@ -58,49 +45,6 @@ function readPreferredLibrary() {
 function savePreferredLibrary() {
   try { localStorage.setItem(PREFERRED_LIBRARY_KEY, elements.library.value); }
   catch { /* 브라우저 저장소를 사용할 수 없으면 현재 선택만 유지합니다. */ }
-}
-
-function readFallbackModes() {
-  try { return JSON.parse(localStorage.getItem(FALLBACK_MODE_KEY) || "{}"); }
-  catch { return {}; }
-}
-
-function readRestrictedSearchSettings() {
-  try { return JSON.parse(localStorage.getItem(RESTRICTED_SEARCH_KEY) || "{}"); }
-  catch { return {}; }
-}
-
-function restrictedSearchEnabled() {
-  return elements.restrictedToggle.checked && elements.library.value !== "ALL";
-}
-
-function saveRestrictedSearchSetting() {
-  const libraryId = elements.library.value;
-  if (!libraryId || libraryId === "ALL") return;
-  try {
-    const settings = readRestrictedSearchSettings();
-    settings[libraryId] = elements.restrictedToggle.checked;
-    localStorage.setItem(RESTRICTED_SEARCH_KEY, JSON.stringify(settings));
-  } catch { /* 저장할 수 없으면 현재 선택만 사용합니다. */ }
-}
-
-function currentFallbackMode() {
-  if (!restrictedSearchEnabled()) return "none";
-  return elements.fallbackModes.find((input) => input.checked)?.value === "file" ? "file" : "api";
-}
-
-function setFallbackMode(mode) {
-  elements.fallbackModes.forEach((input) => { input.checked = input.value === mode; });
-}
-
-function saveFallbackMode() {
-  const libraryId = elements.library.value;
-  if (!libraryId || libraryId === "ALL") return;
-  try {
-    const modes = readFallbackModes();
-    modes[libraryId] = currentFallbackMode();
-    localStorage.setItem(FALLBACK_MODE_KEY, JSON.stringify(modes));
-  } catch { /* 저장할 수 없으면 현재 선택만 사용합니다. */ }
 }
 
 function getQueries() {
@@ -119,10 +63,7 @@ function updateCount() {
     elements.limitWarning.textContent = "";
     elements.limitWarning.hidden = true;
   }
-  const mode = currentFallbackMode();
-  const fileModeReady = mode !== "file" || Boolean(state.localData.catalog);
-  const searchReady = mode === "none" || state.config?.apiReady || (mode === "file" && fileModeReady);
-  elements.searchButton.disabled = state.searching || !searchReady || !fileModeReady || !count || count > max;
+  elements.searchButton.disabled = state.searching || !count || count > max;
 }
 
 function showError(message = "") {
@@ -257,13 +198,6 @@ async function submitSearch(event) {
   event.preventDefault(); showError();
   const queries = getQueries();
   if (!queries.length || state.searching) return;
-  if (currentFallbackMode() === "file" && elements.library.value !== "ALL" && !state.localData.catalog) {
-    return showError("월간 파일 사용을 선택했습니다. 먼저 선택한 도서관의 월간 장서 파일을 등록해 주세요.");
-  }
-  if (state.config.turnstileSiteKey && !state.turnstileSessionReady && !state.turnstileToken) {
-    elements.turnstileArea.hidden = false;
-    return showError("자동 검색 방지 인증을 완료해 주세요.");
-  }
 
   state.searching = true; state.results = [];
   elements.resultBody.replaceChildren(); elements.mobileResults.replaceChildren();
@@ -283,20 +217,13 @@ async function submitSearch(event) {
         body: JSON.stringify({
           queries: batch,
           libraryId: elements.library.value,
-          fallbackMode: currentFallbackMode(),
-          localFallback: localMatches.map(Boolean),
-          turnstileToken: offset === 0 ? state.turnstileToken : ""
+          localFallback: localMatches.map(Boolean)
         })
       });
       if (!response.ok) {
-        if (response.status === 403 && state.config.turnstileSiteKey) {
-          state.turnstileSessionReady = false;
-          elements.turnstileArea.hidden = false;
-        }
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || `검색 서버 오류 (${response.status})`);
       }
-      if (state.config.turnstileSiteKey && offset === 0) state.turnstileSessionReady = true;
       await readNdjson(response, queries.length, offset, localMatches);
     }
     updateSummary(state.results.filter(Boolean).length, queries.length);
@@ -306,11 +233,7 @@ async function submitSearch(event) {
   } finally {
     state.searching = false;
     elements.searchButton.classList.remove("loading"); elements.buttonLabel.textContent = "소장 여부 확인하기";
-    if (window.turnstile && state.turnstileWidgetId !== null) {
-      window.turnstile.reset(state.turnstileWidgetId);
-      elements.turnstileArea.hidden = state.turnstileSessionReady;
-    }
-    state.turnstileToken = ""; updateCount();
+    updateCount();
   }
 }
 
@@ -328,34 +251,6 @@ function downloadExcel() {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-async function setupTurnstile(siteKey) {
-  elements.turnstileArea.hidden = false;
-  await new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    script.async = true; script.defer = true; script.onload = resolve; script.onerror = reject;
-    document.head.append(script);
-  });
-  state.turnstileWidgetId = window.turnstile.render(elements.turnstileWidget, {
-    sitekey: siteKey,
-    theme: "auto",
-    appearance: "interaction-only",
-    callback: (token) => {
-      state.turnstileToken = token;
-      elements.turnstileArea.hidden = true;
-      showError();
-    },
-    "expired-callback": () => {
-      state.turnstileToken = "";
-      elements.turnstileArea.hidden = state.turnstileSessionReady;
-    },
-    "error-callback": () => {
-      state.turnstileToken = "";
-      elements.turnstileArea.hidden = state.turnstileSessionReady;
-    }
-  });
-}
-
 function selectedLibrary() {
   return state.config?.libraries.find((library) => library.id === elements.library.value) ?? null;
 }
@@ -369,20 +264,6 @@ function describeDataset(dataset) {
   if (!dataset) return "등록된 파일 없음";
   const date = dataset.dataMonth || dataset.latestDate || dataset.importedAt.slice(0, 10);
   return `${dataset.fileName} · ${dataset.total.toLocaleString()}건 · ${date}`;
-}
-
-function updateSetupWarning() {
-  const individual = elements.library.value !== "ALL";
-  if (individual && currentFallbackMode() === "file" && !state.localData.catalog) {
-    elements.setupWarning.textContent = "월간 파일 사용을 선택했습니다. 먼저 선택한 도서관의 최신 월간 장서 파일을 등록해 주세요.";
-    elements.setupWarning.hidden = false;
-  } else if (currentFallbackMode() === "api" && !state.config?.apiReady) {
-    elements.setupWarning.textContent = "도서관정보나루 API 키가 서버에 설정되지 않았습니다. 월간 파일 사용을 선택하면 파일 기준으로 검색할 수 있습니다.";
-    elements.setupWarning.hidden = false;
-  } else {
-    elements.setupWarning.textContent = "";
-    elements.setupWarning.hidden = true;
-  }
 }
 
 function renderRecentFiles(collection) {
@@ -407,19 +288,11 @@ function renderRecentFiles(collection) {
 function updateDataTools() {
   const library = selectedLibrary();
   const individual = library && library.id !== "ALL";
-  const enabled = individual && restrictedSearchEnabled();
   const recentCount = state.localData.recent?.files?.length || 0;
   const registered = Boolean(state.localData.catalog) || recentCount;
   elements.dataSummary.textContent = registered
     ? `월간 ${state.localData.catalog ? "등록" : "없음"} · 최근 ${recentCount}개`
     : "등록 없음";
-  elements.restrictedToggle.disabled = !individual;
-  elements.restrictedToggleState.textContent = enabled
-    ? "현재: 사서제한 도서까지 함께 검색 중"
-    : "현재: 화성시 도서관 홈페이지에서만 검색 중";
-  elements.restrictedSettings.hidden = !enabled;
-  elements.restrictedToggle.setAttribute("aria-expanded", String(enabled));
-  elements.monthlyFilePanel.hidden = !enabled || currentFallbackMode() !== "file";
   const searchName = library?.openDataName || "화성시립";
   elements.openDataLink.href = `https://www.data4library.kr/openDataL?srchText=${encodeURIComponent(searchName)}`;
   elements.openDataLink.textContent = individual && library.openDataName
@@ -428,7 +301,6 @@ function updateDataTools() {
   elements.openDataLink.setAttribute("aria-disabled", String(!individual));
   elements.catalogFile.disabled = !individual;
   elements.recentFile.disabled = !individual;
-  elements.fallbackModes.forEach((input) => { input.disabled = !enabled; });
   document.querySelectorAll(".file-button").forEach((label) => label.classList.toggle("disabled", !individual));
   elements.catalogStatus.textContent = describeDataset(state.localData.catalog);
   elements.recentStatus.textContent = recentCount
@@ -444,7 +316,6 @@ function updateDataTools() {
     ? `이 월간자료의 최신 등록일은 ${cutoff}입니다. 이 날짜 이후 구매한 도서 목록은 아래 ‘최근 구매’에 추가하세요.`
     : "";
   renderRecentFiles(state.localData.recent);
-  updateSetupWarning();
   updateCount();
 }
 
@@ -453,8 +324,6 @@ async function loadLocalData() {
   const libraryId = elements.library.value;
   if (!libraryId || libraryId === "ALL") {
     state.localData = { catalog: null, recent: null };
-    elements.restrictedToggle.checked = false;
-    setFallbackMode("api");
     updateDataTools();
     return;
   }
@@ -462,11 +331,6 @@ async function loadLocalData() {
     const [catalog, recent] = await Promise.all([loadDataset("catalog", libraryId), loadDataset("recent", libraryId)]);
     if (elements.library.value !== libraryId) return;
     state.localData = { catalog, recent: normalizeRecentCollection(recent) };
-    const restrictedSettings = readRestrictedSearchSettings();
-    const hasTogglePreference = Object.prototype.hasOwnProperty.call(restrictedSettings, libraryId);
-    elements.restrictedToggle.checked = restrictedSettings[libraryId] === true;
-    const savedMode = hasTogglePreference ? readFallbackModes()[libraryId] : null;
-    setFallbackMode(savedMode === "file" || savedMode === "api" ? savedMode : "file");
   } catch (error) {
     state.localData = { catalog: null, recent: null };
     showDataError(error.message || "저장된 보조 데이터를 불러올 수 없습니다.");
@@ -515,8 +379,6 @@ async function importLocalFile(type, file) {
   } else {
     await saveDataset(dataset);
     state.localData.catalog = dataset;
-    setFallbackMode("file");
-    saveFallbackMode();
   }
   updateDataTools();
 }
@@ -565,10 +427,10 @@ async function deleteRecentFile(fileId) {
 
 function findLocalMatch(query) {
   const isbn = normalizeIsbn(query);
-  if (!isbn || elements.library.value === "ALL" || !restrictedSearchEnabled()) return null;
+  if (!isbn || elements.library.value === "ALL") return null;
   const recent = state.localData.recent?.records?.[isbn];
   if (recent) return { type: "recent", record: recent };
-  const catalog = currentFallbackMode() === "file" ? state.localData.catalog?.records?.[isbn] : null;
+  const catalog = state.localData.catalog?.records?.[isbn];
   if (catalog) return { type: "catalog", record: catalog };
   return null;
 }
@@ -586,8 +448,6 @@ async function initialize() {
     state.activeLibraryId = elements.library.value;
     elements.library.disabled = false;
     await loadLocalData();
-    updateSetupWarning();
-    if (state.config.turnstileSiteKey) await setupTurnstile(state.config.turnstileSiteKey);
   } catch (error) {
     showError(error.message || "초기 설정 중 오류가 발생했습니다.");
   } finally { updateCount(); }
@@ -595,14 +455,6 @@ async function initialize() {
 
 elements.queries.addEventListener("input", updateCount);
 elements.library.addEventListener("change", changeLibrary);
-elements.restrictedToggle.addEventListener("change", () => {
-  saveRestrictedSearchSetting();
-  updateDataTools();
-});
-elements.fallbackModes.forEach((input) => input.addEventListener("change", () => {
-  saveFallbackMode();
-  updateDataTools();
-}));
 elements.catalogFile.addEventListener("change", () => handleFileInput("catalog", elements.catalogFile));
 elements.recentFile.addEventListener("change", () => handleFileInput("recent", elements.recentFile));
 elements.catalogRemove.addEventListener("click", () => deleteLocalData("catalog"));

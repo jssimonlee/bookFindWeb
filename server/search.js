@@ -1,14 +1,6 @@
-import { normalizeLibraryName } from "./libraries.js";
-
 const HWASEONG_SEARCH_URL =
   "https://www.hscitylib.or.kr/iutlib/menu/11340/program/30002/searchResultList.do";
-const DATA4LIBRARY_URL = "https://data4library.kr/api";
 const HWASEONG_TIMEOUT_MS = 12_000;
-const DATA4LIBRARY_TIMEOUT_MS = 25_000;
-const DATA4LIBRARY_MAX_ATTEMPTS = 2;
-const DATA4LIBRARY_RETRY_DELAY_MS = 1_000;
-const TRANSIENT_DATA4LIBRARY_STATUSES = new Set([502, 503, 504, 520, 521, 522, 523, 524]);
-const resolvedLibraryCodes = new Map();
 
 function writeDiagnostic(diagnostics, event, details = {}) {
   if (!diagnostics?.id || diagnostics.log !== true) return;
@@ -179,28 +171,6 @@ async function fetchBibliographicRegistration(bookKey, pubFormCode) {
   return parseBibliographicRegistration(await response.text());
 }
 
-async function fetchData4LibraryWithRetry(url) {
-  for (let attempt = 1; attempt <= DATA4LIBRARY_MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetchWithTimeout(url, {}, DATA4LIBRARY_TIMEOUT_MS);
-      if (TRANSIENT_DATA4LIBRARY_STATUSES.has(response.status) && attempt < DATA4LIBRARY_MAX_ATTEMPTS) {
-        await new Promise((resolve) => setTimeout(resolve, DATA4LIBRARY_RETRY_DELAY_MS));
-        continue;
-      }
-      return { response, attempts: attempt };
-    } catch (error) {
-      const timedOut = error instanceof Error && error.name === "AbortError";
-      if (!timedOut) throw error;
-      if (attempt === DATA4LIBRARY_MAX_ATTEMPTS) {
-        error.attempts = attempt;
-        throw error;
-      }
-      await new Promise((resolve) => setTimeout(resolve, DATA4LIBRARY_RETRY_DELAY_MS));
-    }
-  }
-  throw new Error("도서관정보나루 요청을 완료할 수 없습니다.");
-}
-
 async function fetchHwaseong(query, library) {
   const requestUrl = new URL(HWASEONG_SEARCH_URL);
   const searchUrl = buildHwaseongSearchUrl(query, library.id, library.sitePath);
@@ -230,108 +200,7 @@ async function fetchHwaseong(query, library) {
   return { book, searchUrl };
 }
 
-function unwrapApiEntries(container, pluralKey, singularKey) {
-  const entries = container?.[pluralKey];
-  if (!Array.isArray(entries)) return [];
-  return entries.map((entry) => entry?.[singularKey] ?? entry).filter(Boolean);
-}
-
-function assertData4LibraryResponse(data) {
-  const error = data?.response?.error ?? data?.error;
-  if (!error) return;
-  const message = error.message ?? error.msg ?? error.code ?? "알 수 없는 API 오류";
-  throw new Error(`도서관정보나루 API 오류 (${message})`);
-}
-
-async function resolveData4LibraryCode(library, apiKey) {
-  if (library.data4libraryCode) return library.data4libraryCode;
-  if (resolvedLibraryCodes.has(library.id)) return resolvedLibraryCodes.get(library.id);
-
-  const url = new URL(`${DATA4LIBRARY_URL}/libSrch`);
-  url.searchParams.set("authKey", apiKey);
-  url.searchParams.set("region", "31");
-  url.searchParams.set("dtl_region", "41590");
-  url.searchParams.set("pageNo", "1");
-  url.searchParams.set("pageSize", "100");
-  url.searchParams.set("format", "json");
-
-  // 정보나루는 format=json 파라미터로 응답 형식을 정하며,
-  // 일부 환경에서 Accept: application/json 요청을 406으로 거부합니다.
-  const { response, attempts } = await fetchData4LibraryWithRetry(url);
-  if (!response.ok) {
-    const error = new Error(`도서관정보나루 도서관 조회 오류 (${response.status})`);
-    error.attempts = attempts;
-    throw error;
-  }
-  const data = await response.json();
-  assertData4LibraryResponse(data);
-  const libraries = unwrapApiEntries(data?.response, "libs", "lib");
-  const candidates = [library.name, ...library.aliases].map(normalizeLibraryName).filter(Boolean);
-  const match = libraries.find((entry) => {
-    const remoteName = normalizeLibraryName(entry.libName ?? entry.lib_name ?? "");
-    return candidates.some((candidate) => remoteName === candidate || remoteName.includes(candidate) || candidate.includes(remoteName));
-  });
-  const code = match?.libCode ?? match?.lib_code ?? null;
-  resolvedLibraryCodes.set(library.id, code);
-  return code;
-}
-
-async function fetchData4Library(isbn, library, apiKey, resultCache) {
-  const cached = await resultCache?.get(library.id, isbn);
-  if (cached?.state === "found" || cached?.state === "not_found") {
-    return { ...cached, cacheState: "hit", attempts: 0 };
-  }
-
-  const libraryCode = await resolveData4LibraryCode(library, apiKey);
-  if (!libraryCode) return { state: "unsupported", book: null, attempts: 0 };
-
-  const url = new URL(`${DATA4LIBRARY_URL}/itemSrch`);
-  url.searchParams.set("authKey", apiKey);
-  url.searchParams.set("libCode", libraryCode);
-  url.searchParams.set("type", "ALL");
-  url.searchParams.set("isbn13", isbn);
-  url.searchParams.set("pageNo", "1");
-  url.searchParams.set("pageSize", "1");
-  url.searchParams.set("format", "json");
-
-  const { response, attempts } = await fetchData4LibraryWithRetry(url);
-  if (!response.ok) {
-    const error = new Error(`도서관정보나루 응답 오류 (${response.status})`);
-    error.attempts = attempts;
-    throw error;
-  }
-  const data = await response.json();
-  assertData4LibraryResponse(data);
-  const docs = unwrapApiEntries(data?.response, "docs", "doc");
-  if (!docs.length) {
-    const result = { state: "not_found", book: null };
-    await resultCache?.set(library.id, isbn, result);
-    return { ...result, cacheState: "miss", attempts };
-  }
-
-  const doc = docs[0];
-  const callNumberEntry = unwrapApiEntries(doc, "callNumbers", "callNumber")[0] ?? {};
-  const classNumber = doc.class_no ?? "";
-  const bookCode = callNumberEntry.book_code ?? "";
-  const result = {
-    state: "found",
-    book: {
-      isbn,
-      title: doc.bookname ?? "",
-      author: doc.authors ?? "",
-      publisher: doc.publisher ?? "",
-      year: doc.publication_year ?? "",
-      room: callNumberEntry.shelf_loc_name ?? "",
-      registration: "",
-      callNumber: [classNumber, bookCode].filter(Boolean).join("-"),
-      count: null
-    }
-  };
-  await resultCache?.set(library.id, isbn, result);
-  return { ...result, cacheState: "miss", attempts };
-}
-
-export async function searchOne(rawQuery, library, apiKey, diagnostics = {}, resultCache = null, options = {}) {
+export async function searchOne(rawQuery, library, diagnostics = {}, options = {}) {
   const classified = classifyQuery(rawQuery);
   const base = { query: classified.query, libraryId: library.id, libraryName: library.name };
   const trace = {
@@ -369,19 +238,7 @@ export async function searchOne(rawQuery, library, apiKey, diagnostics = {}, res
       };
     }
 
-    if (options.homepageOnly === true) {
-      writeDiagnostic(trace, "search_complete", { status: "not_found", source: "hwaseong", elapsedMs: Date.now() - searchStarted });
-      return {
-        ...base,
-        status: "not_found",
-        source: "hwaseong",
-        searchUrl: hwaseong.searchUrl,
-        isbn: classified.isbn,
-        title: ""
-      };
-    }
-
-    if (options.skipData4Library === true) {
+    if (options.localMatch === true) {
       writeDiagnostic(trace, "search_complete", { status: "local_pending", elapsedMs: Date.now() - searchStarted });
       return {
         ...base,
@@ -393,44 +250,11 @@ export async function searchOne(rawQuery, library, apiKey, diagnostics = {}, res
       };
     }
 
-    if (options.disableData4Library === true) {
-      writeDiagnostic(trace, "search_complete", { status: "not_found", source: "local_files", elapsedMs: Date.now() - searchStarted });
-      return {
-        ...base,
-        status: "not_found",
-        source: "local_files",
-        searchUrl: hwaseong.searchUrl,
-        isbn: classified.isbn,
-        title: ""
-      };
-    }
-
-    stage = "data4library";
-    stageStarted = Date.now();
-    const fallback = await fetchData4Library(toIsbn13(classified.isbn), library, apiKey, resultCache);
-    writeDiagnostic(trace, "upstream_complete", {
-      service: "data4library",
-      elapsedMs: Date.now() - stageStarted,
-      state: fallback.state,
-      cache: fallback.cacheState ?? "disabled",
-      attempts: fallback.attempts
-    });
-    if (fallback.state === "found") {
-      writeDiagnostic(trace, "search_complete", { status: "restricted_estimated", elapsedMs: Date.now() - searchStarted });
-      return {
-        ...base,
-        status: "restricted_estimated",
-        source: "data4library",
-        searchUrl: hwaseong.searchUrl,
-        ...fallback.book
-      };
-    }
-    const status = fallback.state === "unsupported" ? "fallback_unavailable" : "not_found";
-    writeDiagnostic(trace, "search_complete", { status, elapsedMs: Date.now() - searchStarted });
+    writeDiagnostic(trace, "search_complete", { status: "not_found", elapsedMs: Date.now() - searchStarted });
     return {
       ...base,
-      status,
-      source: "data4library",
+      status: "not_found",
+      source: "hwaseong",
       searchUrl: hwaseong.searchUrl,
       isbn: classified.isbn,
       title: ""

@@ -7,6 +7,9 @@ const elements = {
   queryCount: document.querySelector("#query-count"),
   library: document.querySelector("#library"),
   dataSummary: document.querySelector("#data-summary"),
+  restrictedToggle: document.querySelector("#restricted-search-toggle"),
+  restrictedToggleState: document.querySelector("#restricted-toggle-state"),
+  restrictedSettings: document.querySelector("#restricted-settings"),
   openDataLink: document.querySelector("#open-data-link"),
   catalogFile: document.querySelector("#catalog-file"),
   recentFile: document.querySelector("#recent-file"),
@@ -36,6 +39,7 @@ const state = {
   activeLibraryId: "ALL"
 };
 const PREFERRED_LIBRARY_KEY = "bookfind.preferredLibraryId";
+const RESTRICTED_SEARCH_KEY = "bookfind.restrictedSearchByLibrary";
 
 function readPreferredLibrary() {
   try { return localStorage.getItem(PREFERRED_LIBRARY_KEY) || "ALL"; }
@@ -45,6 +49,25 @@ function readPreferredLibrary() {
 function savePreferredLibrary() {
   try { localStorage.setItem(PREFERRED_LIBRARY_KEY, elements.library.value); }
   catch { /* 브라우저 저장소를 사용할 수 없으면 현재 선택만 유지합니다. */ }
+}
+
+function readRestrictedSearchSettings() {
+  try { return JSON.parse(localStorage.getItem(RESTRICTED_SEARCH_KEY) || "{}"); }
+  catch { return {}; }
+}
+
+function restrictedSearchEnabled() {
+  return elements.restrictedToggle.checked && elements.library.value !== "ALL";
+}
+
+function saveRestrictedSearchSetting() {
+  const libraryId = elements.library.value;
+  if (!libraryId || libraryId === "ALL") return;
+  try {
+    const settings = readRestrictedSearchSettings();
+    settings[libraryId] = elements.restrictedToggle.checked;
+    localStorage.setItem(RESTRICTED_SEARCH_KEY, JSON.stringify(settings));
+  } catch { /* 저장할 수 없으면 현재 선택만 사용합니다. */ }
 }
 
 function getQueries() {
@@ -288,11 +311,18 @@ function renderRecentFiles(collection) {
 function updateDataTools() {
   const library = selectedLibrary();
   const individual = library && library.id !== "ALL";
+  const enabled = individual && restrictedSearchEnabled();
   const recentCount = state.localData.recent?.files?.length || 0;
   const registered = Boolean(state.localData.catalog) || recentCount;
   elements.dataSummary.textContent = registered
     ? `월간 ${state.localData.catalog ? "등록" : "없음"} · 최근 ${recentCount}개`
     : "등록 없음";
+  elements.restrictedToggle.disabled = !individual;
+  elements.restrictedToggleState.textContent = enabled
+    ? "현재: 사서제한 도서까지 함께 검색 중"
+    : "현재: 화성시 도서관 홈페이지에서만 검색 중";
+  elements.restrictedSettings.hidden = !enabled;
+  elements.restrictedToggle.setAttribute("aria-expanded", String(enabled));
   const searchName = library?.openDataName || "화성시립";
   elements.openDataLink.href = `https://www.data4library.kr/openDataL?srchText=${encodeURIComponent(searchName)}`;
   elements.openDataLink.textContent = individual && library.openDataName
@@ -324,6 +354,7 @@ async function loadLocalData() {
   const libraryId = elements.library.value;
   if (!libraryId || libraryId === "ALL") {
     state.localData = { catalog: null, recent: null };
+    elements.restrictedToggle.checked = false;
     updateDataTools();
     return;
   }
@@ -331,6 +362,7 @@ async function loadLocalData() {
     const [catalog, recent] = await Promise.all([loadDataset("catalog", libraryId), loadDataset("recent", libraryId)]);
     if (elements.library.value !== libraryId) return;
     state.localData = { catalog, recent: normalizeRecentCollection(recent) };
+    elements.restrictedToggle.checked = readRestrictedSearchSettings()[libraryId] === true;
   } catch (error) {
     state.localData = { catalog: null, recent: null };
     showDataError(error.message || "저장된 보조 데이터를 불러올 수 없습니다.");
@@ -427,7 +459,7 @@ async function deleteRecentFile(fileId) {
 
 function findLocalMatch(query) {
   const isbn = normalizeIsbn(query);
-  if (!isbn || elements.library.value === "ALL") return null;
+  if (!isbn || elements.library.value === "ALL" || !restrictedSearchEnabled()) return null;
   const recent = state.localData.recent?.records?.[isbn];
   if (recent) return { type: "recent", record: recent };
   const catalog = state.localData.catalog?.records?.[isbn];
@@ -455,6 +487,10 @@ async function initialize() {
 
 elements.queries.addEventListener("input", updateCount);
 elements.library.addEventListener("change", changeLibrary);
+elements.restrictedToggle.addEventListener("change", () => {
+  saveRestrictedSearchSetting();
+  updateDataTools();
+});
 elements.catalogFile.addEventListener("change", () => handleFileInput("catalog", elements.catalogFile));
 elements.recentFile.addEventListener("change", () => handleFileInput("recent", elements.recentFile));
 elements.catalogRemove.addEventListener("click", () => deleteLocalData("catalog"));

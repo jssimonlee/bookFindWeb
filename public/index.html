@@ -53,11 +53,15 @@
               </div>
 
               <section id="data-tools" class="data-tools">
-                <div class="data-tools-title">
-                  <span><strong>사서제한·최근 구매 확인</strong><small>홈페이지 검색에 파일 데이터를 함께 확인합니다</small></span>
-                  <small id="data-summary">등록 없음</small>
-                </div>
-                <div class="data-tools-body">
+                <label class="restricted-toggle" for="restricted-search-toggle">
+                  <span class="restricted-toggle-copy"><strong>사서제한 도서까지 함께 검색</strong><small id="restricted-toggle-state">현재: 화성시 도서관 홈페이지에서만 검색 중</small></span>
+                  <span class="toggle-controls">
+                    <small id="data-summary">등록 없음</small>
+                    <input id="restricted-search-toggle" type="checkbox" role="switch" aria-controls="restricted-settings" aria-expanded="false">
+                    <span class="toggle-track" aria-hidden="true"><span></span></span>
+                  </span>
+                </label>
+                <div id="restricted-settings" class="data-tools-body" hidden>
                   <div id="monthly-file-panel" class="monthly-file-panel">
                     <strong class="monthly-file-title">월간 파일 설정</strong>
                     <a id="open-data-link" class="data-download-link" href="https://www.data4library.kr/openDataL?srchText=%ED%99%94%EC%84%B1%EC%8B%9C%EB%A6%BD" target="_blank" rel="noopener noreferrer">정보나루에서 월간 장서 CSV 받기 <span aria-hidden="true">↗</span></a>

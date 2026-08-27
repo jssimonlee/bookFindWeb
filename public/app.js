@@ -31,7 +31,12 @@ const elements = {
   resultSummary: document.querySelector("#result-summary"),
   resultBody: document.querySelector("#result-body"),
   mobileResults: document.querySelector("#mobile-results"),
-  excelButton: document.querySelector("#excel-button")
+  excelButton: document.querySelector("#excel-button"),
+  libraryChangeDialog: document.querySelector("#library-change-dialog"),
+  libraryChangeMessage: document.querySelector("#library-change-message"),
+  libraryChangeFiles: document.querySelector("#library-change-files"),
+  libraryChangeCancel: document.querySelector("#library-change-cancel"),
+  libraryChangeConfirm: document.querySelector("#library-change-confirm")
 };
 
 const state = {
@@ -375,21 +380,64 @@ async function loadLocalData() {
   updateDataTools();
 }
 
+function libraryNameById(libraryId) {
+  return state.config?.libraries.find((library) => library.id === libraryId)?.name || "선택한 도서관";
+}
+
+function confirmLibraryChange(previousLibraryId, nextLibraryId) {
+  const files = [];
+  if (state.localData.catalog) files.push({ type: "월간 장서", name: state.localData.catalog.fileName || "등록한 월간 장서 파일" });
+  for (const file of state.localData.recent?.files || []) {
+    files.push({ type: "최근 구매", name: file.fileName || "등록한 최근 구매 파일" });
+  }
+  elements.libraryChangeMessage.textContent = `${libraryNameById(previousLibraryId)} 도서관에서 ${libraryNameById(nextLibraryId)} 도서관으로 변경합니다.`;
+  elements.libraryChangeFiles.replaceChildren(...files.map((file) => {
+    const item = document.createElement("li");
+    const type = document.createElement("span");
+    const name = document.createElement("b");
+    type.textContent = file.type;
+    name.textContent = file.name;
+    item.append(type, name);
+    return item;
+  }));
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (confirmed) => {
+      if (settled) return;
+      settled = true;
+      elements.libraryChangeCancel.removeEventListener("click", cancel);
+      elements.libraryChangeConfirm.removeEventListener("click", confirm);
+      elements.libraryChangeDialog.removeEventListener("cancel", cancelDialog);
+      elements.libraryChangeDialog.close();
+      resolve(confirmed);
+    };
+    const cancel = () => finish(false);
+    const confirm = () => finish(true);
+    const cancelDialog = (event) => { event.preventDefault(); finish(false); };
+    elements.libraryChangeCancel.addEventListener("click", cancel);
+    elements.libraryChangeConfirm.addEventListener("click", confirm);
+    elements.libraryChangeDialog.addEventListener("cancel", cancelDialog);
+    elements.libraryChangeDialog.showModal();
+    elements.libraryChangeCancel.focus();
+  });
+}
+
 async function changeLibrary() {
   const nextLibraryId = elements.library.value;
   const previousLibraryId = state.activeLibraryId;
   const hasFiles = Boolean(state.localData.catalog || state.localData.recent?.files?.length);
   if (previousLibraryId !== "ALL" && previousLibraryId !== nextLibraryId && hasFiles) {
-    const confirmed = window.confirm("도서관을 변경하면 현재 도서관에 등록한 월간 장서와 최근 구매 파일이 모두 삭제됩니다. 계속할까요?");
+    const confirmed = await confirmLibraryChange(previousLibraryId, nextLibraryId);
     if (!confirmed) {
       elements.library.value = previousLibraryId;
       return;
     }
     try {
-      await Promise.all([
-        removeDataset("catalog", previousLibraryId),
-        removeDataset("recent", previousLibraryId)
-      ]);
+      const removals = [];
+      if (state.localData.catalog) removals.push(removeDataset("catalog", previousLibraryId));
+      if (state.localData.recent?.files?.length) removals.push(removeDataset("recent", previousLibraryId));
+      await Promise.all(removals);
     } catch (error) {
       elements.library.value = previousLibraryId;
       showDataError(error.message || "기존 파일을 삭제할 수 없어 도서관을 변경하지 않았습니다.");

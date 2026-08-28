@@ -10,6 +10,8 @@ const elements = {
   dataSummary: document.querySelector("#data-summary"),
   restrictedToggle: document.querySelector("#restricted-search-toggle"),
   restrictedToggleState: document.querySelector("#restricted-toggle-state"),
+  restrictedUnavailable: document.querySelector("#restricted-unavailable"),
+  restrictedHelpButton: document.querySelector("#restricted-help-button"),
   restrictedSettings: document.querySelector("#restricted-settings"),
   openDataLink: document.querySelector("#open-data-link"),
   catalogFile: document.querySelector("#catalog-file"),
@@ -22,12 +24,11 @@ const elements = {
   recentRemove: document.querySelector("#recent-remove"),
   dataError: document.querySelector("#data-error"),
   searchButton: document.querySelector("#search-button"),
-  leftSearchButtonSlot: document.querySelector("#left-search-button-slot"),
-  rightSearchButtonSlot: document.querySelector("#right-search-button-slot"),
   buttonLabel: document.querySelector(".button-label"),
   limitWarning: document.querySelector("#limit-warning"),
   formError: document.querySelector("#form-error"),
   resultsSection: document.querySelector("#results-section"),
+  resultNotes: document.querySelector("#result-notes"),
   resultSummary: document.querySelector("#result-summary"),
   resultBody: document.querySelector("#result-body"),
   mobileResults: document.querySelector("#mobile-results"),
@@ -217,6 +218,7 @@ async function readNdjson(response, total, indexOffset = 0, localMatches = []) {
           : event.result;
         state.results[indexOffset + event.index] = result;
         appendResult(result);
+        elements.resultNotes.hidden = false;
         doneCount = state.results.filter(Boolean).length;
         updateSummary(doneCount, total);
         elements.buttonLabel.textContent = `${doneCount} / ${total} 검색 중`;
@@ -232,6 +234,7 @@ async function submitSearch(event) {
 
   state.searching = true; state.results = [];
   elements.resultBody.replaceChildren(); elements.mobileResults.replaceChildren();
+  elements.resultNotes.hidden = true;
   elements.resultsSection.hidden = false; elements.excelButton.disabled = true;
   elements.searchButton.classList.add("loading"); elements.buttonLabel.textContent = `0 / ${queries.length} 검색 중`;
   updateSummary(0, queries.length); updateCount();
@@ -331,8 +334,11 @@ function updateDataTools() {
     : "현재: 화성시 도서관 홈페이지에서만 검색 중";
   elements.restrictedSettings.hidden = !enabled;
   elements.restrictedToggle.setAttribute("aria-expanded", String(enabled));
-  const targetButtonSlot = enabled ? elements.leftSearchButtonSlot : elements.rightSearchButtonSlot;
-  if (elements.searchButton.parentElement !== targetButtonSlot) targetButtonSlot.append(elements.searchButton);
+  elements.restrictedUnavailable.hidden = individual;
+  if (individual) {
+    elements.restrictedUnavailable.classList.remove("open");
+    elements.restrictedHelpButton.setAttribute("aria-expanded", "false");
+  }
   const searchName = library?.openDataName || "화성시립";
   elements.openDataLink.href = `https://www.data4library.kr/openDataL?srchText=${encodeURIComponent(searchName)}`;
   elements.openDataLink.textContent = individual && library.openDataName
@@ -544,6 +550,10 @@ elements.library.addEventListener("change", changeLibrary);
 elements.restrictedToggle.addEventListener("change", () => {
   saveRestrictedSearchSetting();
   updateDataTools();
+});
+elements.restrictedHelpButton.addEventListener("click", () => {
+  const open = elements.restrictedUnavailable.classList.toggle("open");
+  elements.restrictedHelpButton.setAttribute("aria-expanded", String(open));
 });
 elements.catalogFile.addEventListener("change", () => handleFileInput("catalog", elements.catalogFile));
 elements.recentFile.addEventListener("change", () => handleFileInput("recent", elements.recentFile));

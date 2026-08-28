@@ -146,6 +146,11 @@ textarea::placeholder { color: #98a2b3; }
 .toggle-controls input:checked + .toggle-track span { transform: translateX(21px); }
 .restricted-toggle:has(input:focus-visible) { outline: 3px solid rgba(33, 87, 166, 0.2); outline-offset: -3px; }
 .restricted-toggle:has(input:disabled) { cursor: not-allowed; opacity: 0.55; }
+.restricted-unavailable { padding: 9px 12px 11px; border-top: 1px solid var(--line); background: #f8fafc; }
+.restricted-unavailable button { padding: 0; display: inline-flex; align-items: center; gap: 6px; border: 0; color: var(--blue-dark); background: transparent; font-size: 13px; font-weight: 800; }
+.restricted-unavailable button span { width: 19px; height: 19px; display: inline-grid; place-items: center; border-radius: 50%; color: white; background: var(--blue); font-size: 12px; }
+.restricted-unavailable p { max-height: 0; margin: 0; overflow: hidden; color: var(--muted); font-size: 13px; line-height: 1.55; opacity: 0; transition: max-height 180ms, margin 180ms, opacity 180ms; }
+.restricted-unavailable:hover p, .restricted-unavailable.open p { max-height: 100px; margin-top: 7px; opacity: 1; }
 .data-tools-body { padding: 0 12px 12px; border-top: 1px solid var(--line); }
 .data-tools-body > p { margin: 10px 0 0; }
 .monthly-file-panel { margin-top: 10px; padding: 11px; border: 2px solid #c7d8ee; border-radius: 12px; background: #f8fbff; }
@@ -168,9 +173,10 @@ textarea::placeholder { color: #98a2b3; }
 .recent-file-item { padding: 7px 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
 .recent-file-item span { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .recent-file-item button { grid-row: 1 / span 2; grid-column: 2; padding: 0; border: 0; color: var(--red); background: transparent; font-size: 12px; }
-.result-guide { margin: 17px 0; padding-top: 16px; display: grid; gap: 9px; border-top: 1px solid var(--line); }
-.result-guide > strong { margin-bottom: 1px; font-size: 14px; }
-.result-guide span { display: grid; grid-template-columns: 8px max-content 1fr; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.result-notes { margin-top: 20px; }
+.result-guide { padding: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 14px; border: 1px solid var(--line); border-radius: 13px; background: #f7f9fc; }
+.result-guide > strong { grid-column: 1 / -1; margin-bottom: 2px; font-size: 14px; }
+.result-guide span { padding: 8px 10px; display: grid; grid-template-columns: 8px max-content 1fr; align-items: center; gap: 7px; border-radius: 9px; color: var(--muted); background: var(--white); font-size: 13px; line-height: 1.5; }
 .result-guide b { color: var(--ink); font-size: 13px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .dot.found { background: var(--green); }
@@ -191,8 +197,7 @@ textarea::placeholder { color: #98a2b3; }
 }
 .primary-button { position: relative; width: 100%; height: 54px; margin-top: auto; color: white; background: var(--blue); }
 .search-button-slot .primary-button { margin-top: 0; }
-.left-search-button-slot { margin-top: 4px; }
-.right-search-button-slot { margin-top: auto; }
+.left-search-button-slot { margin-top: 12px; }
 .primary-button:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); }
 .primary-button:disabled, .secondary-button:disabled { cursor: not-allowed; opacity: 0.48; }
 .button-progress {
@@ -232,9 +237,9 @@ td a:hover { text-decoration: underline; }
 .mobile-results { display: none; }
 
 .explanation {
-  margin: 12px 4px 0;
+  margin: 10px 4px 0;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 7px;
   color: var(--muted);
   font-size: 13px;
@@ -272,6 +277,7 @@ td a:hover { text-decoration: underline; }
   textarea { height: 230px; }
   .action-column { min-height: 0; }
   .primary-button { margin-top: 4px; }
+  .result-guide { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {

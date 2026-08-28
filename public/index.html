@@ -41,14 +41,12 @@
                 <div class="field-help"><strong>여기에 ISBN을 붙여 넣으세요.</strong> 하이픈이 포함되어도 괜찮으며 책 제목 검색도 지원합니다.</div>
                 <div id="limit-warning" class="notice warning limit-warning" role="status" aria-live="polite" hidden></div>
               </div>
-              <div class="result-guide" aria-label="검색 결과 안내">
-                <strong>검색 결과는 이렇게 표시됩니다</strong>
-                <span><i class="dot found"></i><b>소장</b> 선택한 도서관에 있는 책</span>
-                <span><i class="dot recent"></i><b>최근 구매</b> 등록한 구매 목록에 있는 책</span>
-                <span><i class="dot estimated"></i><b>사서제한 추정</b> 공개 검색에는 없지만 장서 데이터에 있는 책</span>
-                <span><i class="dot absent"></i><b>미소장</b> 선택한 검색 범위에서 확인되지 않은 책</span>
+              <div id="left-search-button-slot" class="search-button-slot left-search-button-slot">
+                <button id="search-button" class="primary-button" type="submit" disabled>
+                  <span class="button-label">소장 여부 확인하기</span>
+                  <span class="button-progress" aria-hidden="true"></span>
+                </button>
               </div>
-              <div id="left-search-button-slot" class="search-button-slot left-search-button-slot"></div>
             </div>
 
             <div class="action-column">
@@ -66,6 +64,10 @@
                     <span class="toggle-track" aria-hidden="true"><span></span></span>
                   </span>
                 </label>
+                <div id="restricted-unavailable" class="restricted-unavailable">
+                  <button id="restricted-help-button" type="button" aria-expanded="false" aria-controls="restricted-help-text"><span aria-hidden="true">?</span> 전체도서관에서는 왜 사용할 수 없나요?</button>
+                  <p id="restricted-help-text">사서제한 검색은 선택한 도서관의 월간 장서 파일과 비교하는 기능입니다. 전체도서관은 하나의 장서 파일로 연결할 수 없으므로, 개별 도서관을 선택해야 사용할 수 있습니다.</p>
+                </div>
                 <div id="restricted-settings" class="data-tools-body" hidden>
                   <div id="monthly-file-panel" class="monthly-file-panel">
                     <strong class="monthly-file-title">월간 파일 설정</strong>
@@ -101,13 +103,6 @@
               </section>
 
               <div id="form-error" class="notice error" role="alert" hidden></div>
-
-              <div id="right-search-button-slot" class="search-button-slot right-search-button-slot">
-                <button id="search-button" class="primary-button" type="submit" disabled>
-                  <span class="button-label">소장 여부 확인하기</span>
-                  <span class="button-progress" aria-hidden="true"></span>
-                </button>
-              </div>
             </div>
           </div>
         </form>
@@ -128,9 +123,17 @@
           </table>
         </div>
         <div id="mobile-results" class="mobile-results"></div>
+        <div id="result-notes" class="result-notes" hidden>
+          <div class="result-guide" aria-label="검색 결과 안내">
+            <strong>검색 결과는 이렇게 표시됩니다</strong>
+            <span><i class="dot found"></i><b>소장</b> 선택한 도서관에 있는 책</span>
+            <span><i class="dot recent"></i><b>최근 구매</b> 등록한 구매 목록에 있는 책</span>
+            <span><i class="dot estimated"></i><b>사서제한 추정</b> 공개 검색에는 없지만 장서 데이터에 있는 책</span>
+            <span><i class="dot absent"></i><b>미소장</b> 선택한 검색 범위에서 확인되지 않은 책</span>
+          </div>
+          <aside class="explanation"><strong>참고</strong><p>‘사서제한 추정’은 화성시 공개 검색에는 보이지 않지만 도서관정보나루 장서 데이터에는 있는 도서입니다. 실제 소장 상태와 다를 수 있습니다.</p></aside>
+        </div>
       </section>
-
-      <aside class="explanation"><strong>참고</strong><p>‘사서제한 추정’은 화성시 공개 검색에는 보이지 않지만 도서관정보나루 장서 데이터에는 있는 도서입니다. 실제 소장 상태와 다를 수 있습니다.</p></aside>
     </main>
 
     <dialog id="library-change-dialog" class="confirm-dialog" aria-labelledby="library-change-title">

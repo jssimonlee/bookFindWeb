@@ -44,6 +44,13 @@ test("XLSX 첫 번째 시트에서 ISBN 열을 읽는다", async () => {
   assert.equal(dataset.records["9788943314477"].title, "블록상어");
 });
 
+test("50MB를 초과하는 로컬 파일은 읽기 전에 거부한다", async () => {
+  await assert.rejects(
+    () => readSpreadsheetRows({ name: "너무큰파일.csv", size: 50 * 1024 * 1024 + 1 }),
+    /50MB 이하/
+  );
+});
+
 test("최근 구매 파일을 여러 개 누적하고 파일별로 삭제한다", () => {
   const first = buildDataset(
     [["ISBN", "도서명"], ["9788943314477", "첫 책"]],

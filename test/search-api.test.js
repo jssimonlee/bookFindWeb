@@ -41,3 +41,35 @@ test("로컬 파일 일치 표시는 브라우저 병합 상태로 반환한다"
     globalThis.fetch = originalFetch;
   }
 });
+
+test("검색 API는 과도하게 큰 JSON 요청을 거부한다", async () => {
+  const request = new Request("https://localhost/api/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ queries: ["9788943314477"], libraryId: "MX", padding: "x".repeat(20_000) })
+  });
+  const response = await onRequest({ request, env: { DIAGNOSTIC_LOGGING: "false" } });
+  assert.equal(response.status, 413);
+  assert.match(await response.text(), /요청 내용이 너무 큽니다/);
+});
+
+test("검색 API는 중복 검색어를 한 번만 조회한다", async () => {
+  const originalFetch = globalThis.fetch;
+  let upstreamCalls = 0;
+  globalThis.fetch = async () => {
+    upstreamCalls += 1;
+    return new Response('<span id="totalCnt">0</span>', { status: 200 });
+  };
+  const request = new Request("https://localhost/api/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ queries: ["9788943314477", "9788943314477"], libraryId: "MX" })
+  });
+  try {
+    const response = await onRequest({ request, env: { DIAGNOSTIC_LOGGING: "false" } });
+    assert.equal(response.status, 200);
+    assert.equal(upstreamCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

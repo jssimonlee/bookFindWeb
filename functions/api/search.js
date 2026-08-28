@@ -2,6 +2,7 @@ import { findLibrary } from "../../server/libraries.js";
 import { searchOne } from "../../server/search.js";
 
 const MAX_QUERIES = 20;
+const MAX_REQUEST_BYTES = 16 * 1024;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 30;
 const requestLog = new Map();
@@ -28,6 +29,36 @@ function checkRateLimit(request) {
   return recent.length <= RATE_LIMIT;
 }
 
+async function readJsonBody(request) {
+  const declaredLength = Number.parseInt(request.headers.get("Content-Length") || "0", 10);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
+    throw Object.assign(new Error("요청 내용이 너무 큽니다."), { status: 413 });
+  }
+  if (!request.body) throw Object.assign(new Error("요청 내용이 없습니다."), { status: 400 });
+
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_REQUEST_BYTES) {
+      await reader.cancel();
+      throw Object.assign(new Error("요청 내용이 너무 큽니다."), { status: 413 });
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 async function handlePost(context) {
   const { request, env } = context;
   if (!checkRateLimit(request)) return jsonError("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.", 429);
@@ -37,13 +68,14 @@ async function handlePost(context) {
 
   let body;
   try {
-    body = await request.json();
-  } catch {
+    body = await readJsonBody(request);
+  } catch (error) {
+    if (error?.status === 413) return jsonError(error.message, 413);
     return jsonError("요청 내용을 읽을 수 없습니다.", 400);
   }
 
   const queries = Array.isArray(body.queries)
-    ? body.queries.map((value) => String(value).trim()).filter(Boolean)
+    ? [...new Set(body.queries.map((value) => String(value).trim()).filter(Boolean))]
     : [];
   const localFallback = Array.isArray(body.localFallback)
     ? body.localFallback.slice(0, MAX_QUERIES).map((value) => value === true)

@@ -1,6 +1,10 @@
 const DB_NAME = "bookfind-local-data";
 const DB_VERSION = 1;
 const STORE_NAME = "datasets";
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_UNCOMPRESSED_XML_BYTES = 64 * 1024 * 1024;
+const MAX_SPREADSHEET_ROWS = 500_001;
+const MAX_ZIP_ENTRIES = 10_000;
 
 function decodeXml(value = "") {
   return value
@@ -35,7 +39,7 @@ export function matchesLibraryFileName(fileName, libraryName) {
   return !expected || normalize(fileName).includes(expected);
 }
 
-export function parseCsvText(text) {
+export function parseCsvText(text, maxRows = Number.POSITIVE_INFINITY) {
   const rows = [];
   let row = [];
   let value = "";
@@ -54,13 +58,19 @@ export function parseCsvText(text) {
       value = "";
     } else if (character === "\n") {
       row.push(value.replace(/\r$/, ""));
-      if (row.some((cell) => cell !== "")) rows.push(row);
+      if (row.some((cell) => cell !== "")) {
+        rows.push(row);
+        if (rows.length > maxRows) throw new Error("파일의 행 수가 너무 많습니다.");
+      }
       row = [];
       value = "";
     } else value += character;
   }
   row.push(value.replace(/\r$/, ""));
-  if (row.some((cell) => cell !== "")) rows.push(row);
+  if (row.some((cell) => cell !== "")) {
+    rows.push(row);
+    if (rows.length > maxRows) throw new Error("파일의 행 수가 너무 많습니다.");
+  }
   if (rows[0]?.[0]) rows[0][0] = rows[0][0].replace(/^\uFEFF/, "");
   return rows;
 }
@@ -71,7 +81,7 @@ function readCsvBlob(blob) {
     const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
     const replacementCount = (utf8.match(/\uFFFD/g) ?? []).length;
     const text = replacementCount > 2 ? new TextDecoder("euc-kr").decode(bytes) : utf8;
-    return parseCsvText(text);
+    return parseCsvText(text, MAX_SPREADSHEET_ROWS);
   });
 }
 
@@ -84,6 +94,7 @@ function findZipEntries(buffer) {
   }
   if (endOffset < 0) throw new Error("올바른 XLSX 파일이 아닙니다.");
   const entryCount = view.getUint16(endOffset + 10, true);
+  if (entryCount > MAX_ZIP_ENTRIES) throw new Error("XLSX 내부 파일 수가 너무 많습니다.");
   let offset = view.getUint32(endOffset + 16, true);
   const entries = new Map();
   for (let index = 0; index < entryCount; index += 1) {
@@ -106,12 +117,34 @@ function findZipEntries(buffer) {
 
 async function unzipText(entry) {
   if (!entry) return "";
-  if (entry.method === 0) return new TextDecoder().decode(entry.bytes);
+  if (entry.method === 0) {
+    if (entry.bytes.byteLength > MAX_UNCOMPRESSED_XML_BYTES) throw new Error("XLSX 내부 데이터가 너무 큽니다.");
+    return new TextDecoder().decode(entry.bytes);
+  }
   if (entry.method !== 8 || typeof DecompressionStream === "undefined") {
     throw new Error("이 브라우저에서는 해당 XLSX 압축 형식을 읽을 수 없습니다. CSV로 저장해 등록해 주세요.");
   }
   const stream = new Blob([entry.bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-  return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_UNCOMPRESSED_XML_BYTES) {
+      await reader.cancel();
+      throw new Error("XLSX 내부 데이터가 너무 큽니다.");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 function columnIndex(reference) {
@@ -132,6 +165,7 @@ async function readXlsxBlob(blob) {
   for (const match of sheetXml.matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/gi)) {
     const reference = attributeValue(match[1], "r");
     const rowIndex = Math.max(0, Number.parseInt(reference.match(/\d+$/)?.[0] ?? "1", 10) - 1);
+    if (rowIndex >= MAX_SPREADSHEET_ROWS) throw new Error("파일의 행 수가 너무 많습니다.");
     const type = attributeValue(match[1], "t");
     const raw = match[2].match(/<v\b[^>]*>([\s\S]*?)<\/v>/i)?.[1] ?? "";
     const inline = [...match[2].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi)].map((part) => decodeXml(part[1])).join("");
@@ -143,6 +177,7 @@ async function readXlsxBlob(blob) {
 }
 
 export async function readSpreadsheetRows(file) {
+  if (file.size > MAX_FILE_BYTES) throw new Error("파일은 50MB 이하만 등록할 수 있습니다.");
   const extension = file.name.toLowerCase().split(".").pop();
   if (extension === "csv") return readCsvBlob(file);
   if (extension === "xlsx") return readXlsxBlob(file);

@@ -1,5 +1,6 @@
 import { findLibrary } from "../../server/libraries.js";
 import { searchOne } from "../../server/search.js";
+import { normalizeQueryValues } from "../../public/query-input.js";
 
 const MAX_QUERIES = 20;
 const MAX_REQUEST_BYTES = 16 * 1024;
@@ -74,9 +75,7 @@ async function handlePost(context) {
     return jsonError("요청 내용을 읽을 수 없습니다.", 400);
   }
 
-  const queries = Array.isArray(body.queries)
-    ? [...new Set(body.queries.map((value) => String(value).trim()).filter(Boolean))]
-    : [];
+  const queries = normalizeQueryValues(body.queries);
   const localFallback = Array.isArray(body.localFallback)
     ? body.localFallback.slice(0, MAX_QUERIES).map((value) => value === true)
     : [];

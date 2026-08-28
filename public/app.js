@@ -1,5 +1,6 @@
 import { createXlsx } from "./xlsx.js";
 import { addRecentDataset, buildDataset, loadDataset, matchesLibraryFileName, normalizeIsbn, normalizeRecentCollection, readSpreadsheetRows, removeDataset, removeRecentDatasetFile, saveDataset } from "./file-data.js";
+import { parseQueryInput } from "./query-input.js";
 
 const elements = {
   form: document.querySelector("#search-form"),
@@ -80,7 +81,15 @@ function saveRestrictedSearchSetting() {
 }
 
 function getQueries() {
-  return [...new Set(elements.queries.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean))];
+  return parseQueryInput(elements.queries.value);
+}
+
+function cleanQueryField() {
+  const queries = getQueries();
+  const cleaned = queries.join("\n");
+  if (elements.queries.value !== cleaned) elements.queries.value = cleaned;
+  updateCount();
+  return queries;
 }
 
 function updateCount() {
@@ -229,7 +238,7 @@ async function readNdjson(response, total, indexOffset = 0, localMatches = []) {
 
 async function submitSearch(event) {
   event.preventDefault(); showError();
-  const queries = getQueries();
+  const queries = cleanQueryField();
   if (!queries.length || state.searching) return;
 
   state.searching = true; state.results = [];
@@ -546,6 +555,7 @@ async function initialize() {
 }
 
 elements.queries.addEventListener("input", updateCount);
+elements.queries.addEventListener("blur", cleanQueryField);
 elements.library.addEventListener("change", changeLibrary);
 elements.restrictedToggle.addEventListener("change", () => {
   saveRestrictedSearchSetting();

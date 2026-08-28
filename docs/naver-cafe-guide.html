@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1080, initial-scale=1">
+  <title>화성시 도서관 구매 전 소장 확인 사용 안내</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1080px; min-height: 1920px; }
+    body {
+      color: #162033;
+      background: #edf3fb;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      word-break: keep-all;
+    }
+    .guide { width: 1080px; min-height: 1920px; overflow: hidden; background: linear-gradient(180deg, #edf4fd 0, #f7f9fc 450px, #edf2f8 100%); }
+    .hero { position: relative; height: 350px; padding: 64px 70px; color: white; background: linear-gradient(125deg, #173f78, #2164b2 58%, #4d8dd1); }
+    .hero::after { content: "책"; position: absolute; right: 70px; top: 55px; display: grid; width: 152px; height: 152px; place-items: center; border: 3px solid rgba(255,255,255,.35); border-radius: 42px; background: rgba(255,255,255,.12); font-size: 72px; font-weight: 900; box-shadow: 0 24px 50px rgba(8,40,85,.24); }
+    .eyebrow { margin-bottom: 20px; color: #cce3ff; font-size: 24px; font-weight: 800; letter-spacing: .02em; }
+    h1 { width: 730px; margin: 0; font-size: 50px; line-height: 1.22; letter-spacing: -.05em; }
+    .hero p { width: 720px; margin: 22px 0 0; color: #e5f1ff; font-size: 24px; line-height: 1.55; }
+    .content { padding: 42px 55px 55px; }
+    .purpose { display: grid; grid-template-columns: 1.2fr .8fr; gap: 20px; margin-bottom: 30px; }
+    .card { border: 1px solid #d9e3f0; border-radius: 22px; background: white; box-shadow: 0 10px 30px rgba(37,68,107,.08); }
+    .purpose-main { padding: 27px 30px; }
+    .purpose-main strong { display: block; margin-bottom: 11px; color: #2059a0; font-size: 25px; }
+    .purpose-main p { margin: 0; font-size: 21px; line-height: 1.55; }
+    .purpose-point { display: grid; place-items: center; padding: 22px; color: #174a86; text-align: center; background: #eaf3ff; }
+    .purpose-point b { display: block; font-size: 34px; }
+    .purpose-point span { margin-top: 7px; color: #52677f; font-size: 19px; }
+    .section-title { display: flex; align-items: center; gap: 12px; margin: 29px 4px 18px; font-size: 29px; letter-spacing: -.04em; }
+    .section-title::before { content: ""; width: 8px; height: 29px; border-radius: 8px; background: #2364ac; }
+    .screen { position: relative; overflow: hidden; padding: 14px; border: 1px solid #ccd9e8; border-radius: 24px; background: white; box-shadow: 0 14px 36px rgba(31,65,106,.13); }
+    .screen img { display: block; width: 940px; height: auto; border-radius: 14px; }
+    .marker { position: absolute; display: grid; width: 50px; height: 50px; place-items: center; border: 4px solid white; border-radius: 50%; color: white; background: #ec5b45; font-size: 25px; font-weight: 900; box-shadow: 0 5px 16px rgba(130,31,20,.35); }
+    .m1 { left: 64px; top: 180px; }
+    .m2 { left: 520px; top: 170px; }
+    .m3 { left: 410px; bottom: 55px; }
+    .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 22px; }
+    .step { position: relative; min-height: 155px; padding: 22px 22px 20px 78px; }
+    .step-num { position: absolute; left: 21px; top: 22px; display: grid; width: 43px; height: 43px; place-items: center; border-radius: 14px; color: white; background: #2364ac; font-size: 22px; font-weight: 900; }
+    .step strong { display: block; margin-bottom: 9px; font-size: 22px; }
+    .step p { margin: 0; color: #516176; font-size: 18px; line-height: 1.52; }
+    .option { margin-top: 22px; padding: 23px 27px; border-color: #c7dcf6; background: linear-gradient(100deg, #f6faff, #eaf4ff); }
+    .option strong { color: #1d5799; font-size: 22px; }
+    .option p { margin: 8px 0 0; color: #4d6077; font-size: 18px; line-height: 1.55; }
+    .statuses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; }
+    .status { padding: 17px 12px; border-radius: 17px; text-align: center; background: white; border: 1px solid #d9e3f0; }
+    .status b { display: block; margin-bottom: 6px; font-size: 19px; }
+    .status span { color: #627185; font-size: 15px; line-height: 1.35; }
+    .status.found b { color: #17804d; }
+    .status.recent b { color: #2464ae; }
+    .status.estimated b { color: #aa6912; }
+    .status.absent b { color: #596579; }
+    .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 27px; padding: 22px 28px; border-radius: 20px; color: white; background: #173f78; }
+    .footer strong { font-size: 25px; }
+    .footer span { color: #d7e8fa; font-size: 17px; }
+  </style>
+</head>
+<body>
+  <main class="guide">
+    <section class="hero">
+      <div class="eyebrow">화성시 도서관 · 구매 전 소장 확인</div>
+      <h1>구입하려는 책,<br>이미 도서관에 있는지 먼저 확인하세요</h1>
+      <p>ISBN 목록을 한 번에 검색해 중복 구매를 줄이는 무료 웹 도구입니다.</p>
+    </section>
+
+    <div class="content">
+      <section class="purpose">
+        <div class="card purpose-main">
+          <strong>이 사이트의 목적</strong>
+          <p>도서 구매 전에 선택한 화성시 도서관의 소장 여부를 확인하여, 이미 있는 책을 구매 대상에서 제외할 수 있도록 돕습니다.</p>
+        </div>
+        <div class="card purpose-point"><div><b>최대 500권</b><span>ISBN을 한 번에 확인</span></div></div>
+      </section>
+
+      <h2 class="section-title">기본 사용법</h2>
+      <section class="screen">
+        <img src="hsbook-site-viewport.png" alt="화성시 도서관 소장 확인 사이트 화면">
+        <span class="marker m1">1</span>
+        <span class="marker m2">2</span>
+        <span class="marker m3">3</span>
+      </section>
+
+      <section class="steps">
+        <article class="card step"><span class="step-num">1</span><strong>ISBN 붙여넣기</strong><p>한 줄에 한 권씩 입력합니다. 엑셀에서 그대로 복사해도 공백·탭·하이픈·따옴표가 자동 정리됩니다.</p></article>
+        <article class="card step"><span class="step-num">2</span><strong>도서관 선택</strong><p>전체도서관 또는 확인할 개별 도서관을 선택합니다. 자주 쓰는 도서관은 다음 접속 때 자동 선택됩니다.</p></article>
+        <article class="card step"><span class="step-num">3</span><strong>소장 여부 확인</strong><p>버튼을 누르면 입력 순서대로 소장 여부가 표시됩니다. 결과의 책 제목을 누르면 도서관 검색 화면이 열립니다.</p></article>
+        <article class="card step"><span class="step-num">4</span><strong>Excel 다운로드</strong><p>검색이 끝나면 순번과 상태가 포함된 엑셀 파일로 저장해 구매 검토 자료로 활용할 수 있습니다.</p></article>
+      </section>
+
+      <section class="card option">
+        <strong>선택 기능 · 사서제한 도서까지 함께 검색</strong>
+        <p>개별 도서관을 선택한 뒤 도서관정보나루의 최신 월간 장서 파일을 등록하면, 공개 홈페이지에서 보이지 않는 책도 비교할 수 있습니다. 최근 구매 목록도 함께 등록할 수 있습니다.</p>
+      </section>
+
+      <h2 class="section-title">검색 결과 표시</h2>
+      <section class="statuses">
+        <div class="status found"><b>소장</b><span>도서관 홈페이지에서 확인</span></div>
+        <div class="status recent"><b>최근 구매</b><span>등록한 구매 목록에서 확인</span></div>
+        <div class="status estimated"><b>사서제한 추정</b><span>월간 장서 파일에서만 확인</span></div>
+        <div class="status absent"><b>미소장</b><span>선택한 범위에서 확인되지 않음</span></div>
+      </section>
+
+      <footer class="footer"><strong>hsbook.pages.dev</strong><span>회원가입 없이 바로 사용</span></footer>
+    </div>
+  </main>
+</body>
+</html>

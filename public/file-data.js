@@ -160,8 +160,8 @@ function findHeader(headers, candidates) {
 export function buildDataset(rows, { type, libraryId, libraryName, fileName }) {
   if (!rows.length) throw new Error("파일에 데이터가 없습니다.");
   const headers = rows[0].map((value) => String(value ?? "").trim().replace(/^\uFEFF/, ""));
-  const isbnIndex = headers.indexOf("ISBN");
-  if (isbnIndex < 0) throw new Error('첫 번째 행에 정확히 "ISBN"이라는 헤더가 있어야 합니다.');
+  const isbnIndex = headers.findIndex((header) => header.toUpperCase() === "ISBN");
+  if (isbnIndex < 0) throw new Error('첫 번째 행에 "ISBN" 헤더가 있어야 합니다. 대소문자는 구분하지 않습니다.');
   const titleIndex = findHeader(headers, ["도서명", "서명"]);
   const authorIndex = findHeader(headers, ["저자", "저작자"]);
   const publisherIndex = findHeader(headers, ["출판사", "발행자"]);

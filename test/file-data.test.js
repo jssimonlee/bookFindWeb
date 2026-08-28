@@ -11,10 +11,17 @@ test("CSV의 ISBN 헤더와 따옴표가 포함된 도서 정보를 읽는다", 
   assert.equal(dataset.records["9788943314477"].title, "쉼표, 있는 제목");
 });
 
-test("ISBN 헤더가 정확하지 않으면 파일을 거부한다", () => {
+test("ISBN 헤더는 대소문자를 구분하지 않는다", () => {
+  for (const header of ["isbn", "Isbn", "iSBN", " ISBN "]) {
+    const dataset = buildDataset([[header], ["9788943314477"]], { type: "recent", libraryId: "MX", libraryName: "노을빛", fileName: "최근.xlsx" });
+    assert.equal(dataset.total, 1);
+  }
+});
+
+test("ISBN 헤더가 없으면 파일을 거부한다", () => {
   assert.throws(
-    () => buildDataset([["isbn"], ["9788943314477"]], { type: "recent", libraryId: "MX", libraryName: "노을빛", fileName: "최근.xlsx" }),
-    /정확히 "ISBN"/
+    () => buildDataset([["도서번호"], ["9788943314477"]], { type: "recent", libraryId: "MX", libraryName: "노을빛", fileName: "최근.xlsx" }),
+    /"ISBN" 헤더/
   );
 });
 

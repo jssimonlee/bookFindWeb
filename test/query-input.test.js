@@ -10,6 +10,11 @@ test("엑셀에서 ISBN과 책 제목 열을 함께 붙여넣어도 ISBN만 사�
   assert.deepEqual(parseQueryInput("9788943314477\t블록상어\t출판사"), ["9788943314477"]);
 });
 
+test("엑셀이 앞뒤 공백을 보존하려고 붙인 큰따옴표는 ISBN에서만 제거한다", () => {
+  assert.deepEqual(parseQueryInput('  "  978-89-4331-447-7  "  '), ["9788943314477"]);
+  assert.deepEqual(parseQueryInput('"어느 날의 책"'), ['"어느 날의 책"']);
+});
+
 test("공백이나 탭으로 나란히 입력한 ISBN을 각각 분리한다", () => {
   assert.deepEqual(parseQueryInput("9788943314477 9791160079104\n9780306406157\t책 제목"), [
     "9788943314477",

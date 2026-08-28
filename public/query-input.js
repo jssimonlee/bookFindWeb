@@ -10,8 +10,16 @@ function cleanCell(value) {
   return cleanText(value).trim().replace(/\s+/g, " ");
 }
 
+function unwrapSpreadsheetQuotes(value) {
+  const text = cleanText(value).trim();
+  if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+    return text.slice(1, -1).replace(/""/g, '"').trim();
+  }
+  return text;
+}
+
 function asIsbn(value) {
-  const compact = cleanText(value).replace(/[\s-]/g, "").toUpperCase();
+  const compact = unwrapSpreadsheetQuotes(value).replace(/[\s-]/g, "").toUpperCase();
   return /^(?:\d{9}[\dX]|\d{13})$/.test(compact) ? compact : "";
 }
 

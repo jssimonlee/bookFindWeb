@@ -281,9 +281,9 @@ async function submitSearch(event) {
 }
 
 function downloadExcel() {
-  const headers = ["상태", "ISBN/검색어", "서명", "저작자", "발행자", "발행년", "자료실", "등록번호", "청구기호", "권수"];
-  const rows = state.results.filter(Boolean).map((result) => [
-    statusInfo(result.status, result.source)[0], result.isbn || result.query, result.title, result.author, result.publisher,
+  const headers = ["순번", "상태", "ISBN/검색어", "서명", "저작자", "발행자", "발행년", "자료실", "등록번호", "청구기호", "권수"];
+  const rows = state.results.filter(Boolean).map((result, index) => [
+    index + 1, statusInfo(result.status, result.source)[0], result.isbn || result.query, result.title, result.author, result.publisher,
     result.year, result.room, result.registration, result.callNumber, result.count ?? ""
   ]);
   const blob = createXlsx(headers, rows);

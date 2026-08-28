@@ -18,6 +18,33 @@ test("ISBN 헤더는 대소문자를 구분하지 않는다", () => {
   }
 });
 
+test("문서 제목과 병합 셀용 빈 행 뒤에 있는 ISBN 헤더를 찾는다", () => {
+  const rows = [
+    ["2026년 8월 최근 구매 도서 목록", "", ""],
+    ["담당 부서", "자료운영팀", ""],
+    ["", "", ""],
+    ["", "", ""],
+    ["도서명", " I S B N ", "저자"],
+    ["블록상어", "9788943314477", "홍길동"]
+  ];
+  const dataset = buildDataset(rows, { type: "recent", libraryId: "MX", libraryName: "노을빛", fileName: "최근.xlsx" });
+  assert.equal(dataset.total, 1);
+  assert.equal(dataset.records["9788943314477"].title, "블록상어");
+  assert.equal(dataset.records["9788943314477"].author, "홍길동");
+});
+
+test("ISBN 헤더 뒤에 병합 영역의 빈 행이 남아 있어도 데이터를 읽는다", () => {
+  const rows = [
+    ["ISBN", "도서명"],
+    ["", ""],
+    ["", ""],
+    ["9791160079104", "둘째 책"]
+  ];
+  const dataset = buildDataset(rows, { type: "recent", libraryId: "MX", libraryName: "노을빛", fileName: "최근.xlsx" });
+  assert.equal(dataset.total, 1);
+  assert.equal(dataset.records["9791160079104"].title, "둘째 책");
+});
+
 test("ISBN 헤더가 없으면 파일을 거부한다", () => {
   assert.throws(
     () => buildDataset([["도서번호"], ["9788943314477"]], { type: "recent", libraryId: "MX", libraryName: "노을빛", fileName: "최근.xlsx" }),

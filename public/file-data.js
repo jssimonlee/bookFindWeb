@@ -5,6 +5,7 @@ const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_UNCOMPRESSED_XML_BYTES = 64 * 1024 * 1024;
 const MAX_SPREADSHEET_ROWS = 500_001;
 const MAX_ZIP_ENTRIES = 10_000;
+const MAX_HEADER_SCAN_ROWS = 200;
 
 function decodeXml(value = "") {
   return value
@@ -192,11 +193,24 @@ function findHeader(headers, candidates) {
   return -1;
 }
 
+function findIsbnHeaderRow(rows) {
+  const scanCount = Math.min(rows.length, MAX_HEADER_SCAN_ROWS);
+  for (let rowIndex = 0; rowIndex < scanCount; rowIndex += 1) {
+    const headers = (rows[rowIndex] || []).map((value) => String(value ?? "")
+      .normalize("NFKC")
+      .trim()
+      .replace(/^\uFEFF/, ""));
+    const isbnIndex = headers.findIndex((header) => header.replace(/\s+/g, "").toUpperCase() === "ISBN");
+    if (isbnIndex >= 0) return { rowIndex, headers, isbnIndex };
+  }
+  return null;
+}
+
 export function buildDataset(rows, { type, libraryId, libraryName, fileName }) {
   if (!rows.length) throw new Error("파일에 데이터가 없습니다.");
-  const headers = rows[0].map((value) => String(value ?? "").trim().replace(/^\uFEFF/, ""));
-  const isbnIndex = headers.findIndex((header) => header.toUpperCase() === "ISBN");
-  if (isbnIndex < 0) throw new Error('첫 번째 행에 "ISBN" 헤더가 있어야 합니다. 대소문자는 구분하지 않습니다.');
+  const headerRow = findIsbnHeaderRow(rows);
+  if (!headerRow) throw new Error(`문서 상단 ${MAX_HEADER_SCAN_ROWS}개 행 안에 "ISBN" 헤더가 있어야 합니다. 대소문자는 구분하지 않습니다.`);
+  const { rowIndex: headerRowIndex, headers, isbnIndex } = headerRow;
   const titleIndex = findHeader(headers, ["도서명", "서명"]);
   const authorIndex = findHeader(headers, ["저자", "저작자"]);
   const publisherIndex = findHeader(headers, ["출판사", "발행자"]);
@@ -205,7 +219,7 @@ export function buildDataset(rows, { type, libraryId, libraryName, fileName }) {
   const countIndex = findHeader(headers, ["도서권수", "권수"]);
   const records = {};
   let latestDate = "";
-  for (const row of rows.slice(1)) {
+  for (const row of rows.slice(headerRowIndex + 1)) {
     const isbn = normalizeIsbn(row[isbnIndex]);
     if (!isbn) continue;
     const registrationDate = dateIndex >= 0 ? String(row[dateIndex] ?? "").trim() : "";

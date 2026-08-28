@@ -134,17 +134,20 @@ function resultTitleText(result) {
   return "";
 }
 
-function appendResult(result) {
+function appendResult(result, sequence) {
   const [label, className] = statusInfo(result.status, result.source);
   const row = document.createElement("tr");
   const displayTitle = resultTitleText(result);
   const values = [result.isbn || result.query, displayTitle, result.author, result.publisher, result.year, result.room, result.registration, result.callNumber, result.count ?? ""];
+  const sequenceCell = document.createElement("td");
+  sequenceCell.className = "sequence-column";
+  sequenceCell.textContent = String(sequence);
   const statusCell = document.createElement("td");
   const pill = document.createElement("span");
   pill.className = `status-pill ${className}`;
   pill.textContent = label;
   statusCell.append(pill);
-  row.append(statusCell);
+  row.append(sequenceCell, statusCell);
   values.forEach((value, index) => {
     const cell = document.createElement("td");
     if (index === 1 && result.searchUrl && result.title) {
@@ -162,8 +165,11 @@ function appendResult(result) {
   card.className = "result-card";
   const head = document.createElement("div"); head.className = "result-card-head";
   const mobilePill = pill.cloneNode(true);
+  const mobileMeta = document.createElement("div"); mobileMeta.className = "result-card-meta";
+  const mobileSequence = document.createElement("span"); mobileSequence.className = "result-sequence"; mobileSequence.textContent = `#${sequence}`;
+  mobileMeta.append(mobileSequence, mobilePill);
   const isbn = document.createElement("span"); isbn.className = "isbn"; isbn.textContent = result.isbn || result.query;
-  head.append(mobilePill, isbn); card.append(head);
+  head.append(mobileMeta, isbn); card.append(head);
   const title = document.createElement("h3");
   if (result.searchUrl && result.title) {
     const link = document.createElement("a"); link.href = result.searchUrl; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = result.title;
@@ -226,7 +232,7 @@ async function readNdjson(response, total, indexOffset = 0, localMatches = []) {
           ? mergeLocalResult(event.result, localMatches[event.index])
           : event.result;
         state.results[indexOffset + event.index] = result;
-        appendResult(result);
+        appendResult(result, indexOffset + event.index + 1);
         elements.resultNotes.hidden = false;
         doneCount = state.results.filter(Boolean).length;
         updateSummary(doneCount, total);

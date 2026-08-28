@@ -25,6 +25,14 @@ test("ISBN과 제목을 구분하고 검색 URL을 안전하게 만든다", () =
   assert.equal(url.searchParams.get("searchManageCodeArr"), "MP");
 });
 
+test("작은도서관 결과 링크는 통합 자료검색 경로를 사용한다", () => {
+  const library = LIBRARIES.find((item) => item.id === "ME");
+  const url = new URL(buildHwaseongSearchUrl("9788943314477", library.id, library.sitePath));
+  assert.equal(url.pathname, "/intro/program/searchResultList.do");
+  assert.equal(url.searchParams.get("searchManageCodeArr"), "ME");
+  assert.equal(url.searchParams.get("searchAdvIsbn"), "9788943314477");
+});
+
 test("화성시 검색 HTML에서 소장 정보를 읽는다", () => {
   assert.deepEqual(parseHwaseongHtml(HIT_HTML), {
     isbn: "9791160079104",

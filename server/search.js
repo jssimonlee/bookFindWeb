@@ -35,7 +35,8 @@ export function toIsbn13(isbn) {
 
 export function buildHwaseongSearchUrl(rawQuery, libraryId, sitePath = "intro") {
   const { query, isIsbn, isbn } = classifyQuery(rawQuery);
-  const safeSitePath = /^[a-z0-9]+$/.test(sitePath) ? sitePath : "intro";
+  const requestedSitePath = /^[a-z0-9]+$/.test(sitePath) ? sitePath : "intro";
+  const safeSitePath = requestedSitePath === "small" ? "intro" : requestedSitePath;
   const url = new URL(`https://www.hscitylib.or.kr/${safeSitePath}/program/searchResultList.do`);
   url.searchParams.set("searchType", "DETAIL");
   url.searchParams.set("searchManageCodeArr", libraryId);
